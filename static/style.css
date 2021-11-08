@@ -1,0 +1,8 @@
+@font-face {
+  font-family: intel-clear;
+  src: url('IntelClear_Rg.ttf');
+}
+		
+body {
+  font-family: intel-clear;
+}

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Real Time Face Mask Detection</title>
+	<script src="https://kit.fontawesome.com/20a7009ed2.js" crossorigin="anonymous"></script>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+		integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w=="
+		crossorigin="anonymous" referrerpolicy="no-referrer" />
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.0.1/css/bootstrap.min.css" rel="stylesheet">
+	<link href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+	<link href="{{url_for('static', filename='style.css')}}" rel="stylesheet">
+</head>
+
+<body>
+	<nav class="navbar navbar-expand-lg navbar-dark sticky-top shadow" style="background-color: #004a86;">
+		<div class="container justify-content-between">
+			<div class="navbar-brand fw-bold">
+				<a class="navbar-brand fw-bold" href="">
+					<img src="{{ url_for('static', filename='ipm-white.png') }}" width="150px" alt="IPM Logo" />
+				</a>
+			</div>
+			<a class="navbar-brand fw-bold" href="">
+				<i class="fa-solid fa-mask-face"></i> Real Time Face Mask Detection
+			</a>
+			<ul class="navbar-brand fw-bold">
+				<img src="{{ url_for('static', filename='intel-white.png') }}" width="100px" alt="Intel Logo" />
+			</ul>
+		</div>
+	</nav>
+
+	<div class="container">
+		<div class="col-12 my-4">
+			<div class="row">
+				<!-- Original video frame are disabled -->
+				<div class="d-flex justify-content-center">
+					<div class="d-none">
+						<div class="col-lg-6">
+							<div class="card" style="display: none;">
+								<video autoplay="true" id="videoElement"></video>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col-12">
+				<div class="d-flex justify-content-center">
+					<div class="card text-white text-center mb-3 shadow"
+						style="background-color: #00C7FD; margin-left: 6px; margin-right: 6px;">
+						<div class="card-body">
+							<h3 class="card-title" id="digiClock"></h3>
+							<hr>
+							<h5 class="card-subtitle" id="digiDate"></h5>
+							<img id="image" class="img-thumbnail mt-3">
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-lg-12 my-3 text-center">
+		<p class="text-center text-muted my-3">Copyright &copy; 2021 - Intel&reg; AI4FW Surabaya Students.</p>
+	</div>
+	</div>
+
+	<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+		integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous">
+	</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"
+		integrity="sha512-RXf+QSDCUQs5uwRKaDoXt55jygZZm2V++WUZduaU/Ui/9EGp3f/2KZVahFZBKGH0s774sd3HmrhUy+SgOFQLVQ=="
+		crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+	<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap5.min.js"></script>
+	<script type="text/javascript" src="{{url_for('static',filename='socket.io.js')}}"></script>
+	<script type="text/javascript" src="{{url_for('static',filename='opencv.js')}}"></script>
+	<script async type="text/javascript" charset="utf-8">
+		cv['onRuntimeInitialized'] = () => {
+			console.log("opencv.js is ready")
+
+			var socket = io('http://127.0.0.1:5000');
+
+			socket.on('connect', function () {
+				console.log("Connected...!", socket.connected)
+			});
+
+			socket.on("connect_error", (err) => {
+				console.log(`connect_error due to ${err.message}`);
+			});
+
+			const video = document.querySelector("#videoElement");
+
+			video.width = 800;
+			video.height = 600;
+
+			if (navigator.mediaDevices.getUserMedia) {
+				navigator.mediaDevices.getUserMedia({
+						video: true
+					})
+					.then(function (stream) {
+						video.srcObject = stream;
+						video.play();
+
+					})
+					.catch(function (err0r) {
+						console.log(err0r)
+						console.log("Something went wrong!");
+						alert("Something went wrong!");
+					});
+			}
+
+			function capture(video, scaleFactor) {
+				if (scaleFactor == null) {
+					scaleFactor = 1;
+				}
+				var w = video.videoWidth * scaleFactor;
+				var h = video.videoHeight * scaleFactor;
+				var canvas = document.createElement('canvas');
+				canvas.width = w;
+				canvas.height = h;
+				var ctx = canvas.getContext('2d');
+				ctx.drawImage(video, 0, 0, w, h);
+				return canvas;
+			}
+
+			const FPS = 4;
+
+			setInterval(() => {
+				var type = "image/png"
+				var video_element = document.getElementById("videoElement")
+				var frame = capture(video_element, 1)
+				var data = frame.toDataURL(type);
+				data = data.replace('data:' + type + ';base64,', '');
+				socket.emit('image', data);
+			}, 1000 / FPS);
+
+
+			socket.on('response_back', function (image) {
+				console.log(image)
+				document.getElementById("image").src = image;
+
+			});
+
+		}
+	</script>
+	<script>
+		function currentTime() {
+			var date = new Date();
+			var hour = date.getHours();
+			var min = date.getMinutes();
+			var sec = date.getSeconds();
+			var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+				'November', 'December'
+			];
+			var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+			var curWeekDay = days[date.getDay()];
+			var curDay = date.getDate();
+			var curMonth = months[date.getMonth()];
+			var curYear = date.getFullYear();
+			hour = updateTime(hour);
+			min = updateTime(min);
+			sec = updateTime(sec);
+			document.getElementById("digiClock").innerText = hour + ":" + min;
+			document.getElementById("digiDate").innerText = curWeekDay + ", " + curDay + " " + curMonth + " " + curYear;
+			var t = setTimeout(function () {
+				currentTime()
+			}, 1000);
+		}
+
+		function updateTime(k) {
+			if (k < 10) {
+				return "0" + k;
+			} else {
+				return k;
+			}
+		}
+
+		currentTime();
+	</script>
+</body>
+
+</html>
